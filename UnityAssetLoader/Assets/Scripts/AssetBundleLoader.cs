@@ -2,12 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+//TODO:需要解决依赖加载
+
 /// <summary>
 /// AssetBundle加载器
 /// </summary>
 namespace CJGame
 {
-    public class BundleLoader : BaseLoader
+    public class AssetBundleLoader : BaseLoader
     {
         protected class BundleRef
         {
