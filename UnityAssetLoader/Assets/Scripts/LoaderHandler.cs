@@ -7,42 +7,41 @@ namespace CJGame
 {
     public class LoaderHandler
     {
-        public Action<LoaderResult> onSuccess;
-        public Action<LoaderResult> onFailed;
+        public LoadResultCallback1 OnCompoleted;
 
-        public BaseLoader BaseLoader{ get; set; }
+        //public LoadState State{ get; set; }
+        public BaseLoader Loader { get; set; }
         public string Path{ get; set; }
+        public float Timeout { get; set; }
         public bool IsCancel { get; private set; }
 
-        public void Star()
+        private float _tickTime;
+
+        public bool IsTimeout()
         {
-            if (!BaseLoader)
-                return;
-
-            BaseLoader.LaunchHandler(this);
-        }
-
-        public void Stop()
-        {
-            if (!BaseLoader)
-                return;
-        }
-
-        public void Unload(bool unloadAllLoadedObjefcts = false)
-        {
-
-        }
-
-        public void OnCallback(LoaderResult result)
-        {
-            if(IsCancel)
+            if (Timeout > 0)
             {
 
-                return;
             }
-
-
+            return false;
         }
+
+        public bool IsCompoleted()
+        {
+            return false;
+        }
+
+        public void Tick()
+        {
+            _tickTime = Time.realtimeSinceStartup;
+        }
+
+        public void Unload()
+        {
+            Loader.Unload(this);
+        }
+
+
     }
 }
 
