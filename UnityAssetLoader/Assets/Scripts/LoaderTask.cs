@@ -1,37 +1,43 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 
 namespace CJGame
 {
     public class LoaderTask
     {
+        public readonly LoaderHandler handler;
         public Action<LoaderResult> onSuccess;
-        public Action<LoaderResult> onFailed;
+        public Action<int> onFailed;
 
-        public BaseLoader BaseLoader { get; set; }
-        public string Path { get; set; }
-        public bool IsCancel { get; private set; }
-
-        private Dictionary<string, LoaderHandler> _taskHandlers;
-
-        public void Star()
+        public LoaderTask(LoaderHandler handler)
         {
-            if (!BaseLoader)
-                return;
+            this.handler = handler;
         }
 
-        public void Stop()
+        public void Unload()
         {
-            if (!BaseLoader)
-                return;
+            //释放一次
+            handler.Release();
         }
 
-        public void Unload(bool unloadAllLoadedObjefcts = false)
+        public void Clear()
         {
-
+           
         }
+
+        public void Callback(LoaderHandler handler)
+        {
+            var result = handler.Result;
+            if (result.isDone)
+            {
+                onSuccess?.Invoke(result);
+            }
+            else
+            {
+                onFailed?.Invoke(-1);
+            }
+
+            
+        }
+
     }
 }
-

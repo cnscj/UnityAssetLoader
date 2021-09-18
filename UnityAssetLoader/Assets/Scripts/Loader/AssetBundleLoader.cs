@@ -1,8 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
-
-//TODO:需要解决依赖加载
 
 /// <summary>
 /// AssetBundle加载器
@@ -27,12 +26,44 @@ namespace CJGame
 
     public partial class AssetBundleLoader : BaseLoader
     {
-        private Dictionary<string, BundleWrap> _cacheBundleDict = new();
-        private Dictionary<string, string[]> _dependenciesPath = new();
+        private Dictionary<string, BundleWrap> _cacheBundleDict = new Dictionary<string, BundleWrap>();
+        private Dictionary<string, string[]> _dependenciesPath = new Dictionary<string, string[]>();
+        private string _assetBundleRootPath;
 
-        public void LoadDependencies(string mainfest)
+        //依赖文件加载
+        public void LoadManifest(string mainfestPath)
         {
+            //采用同步加载的方式,不然后面的都取不到依赖
+            var mainfestAssetBundle = AssetBundle.LoadFromFile(mainfestPath);
+            if (mainfestAssetBundle != null)
+            {
+                //取mainfest所在目录为根目录
+                _assetBundleRootPath = Path.GetDirectoryName(mainfestPath);
 
+                AssetBundleManifest mainfest = mainfestAssetBundle.LoadAsset("AssetBundleManifest") as AssetBundleManifest;
+                _dependenciesPath.Clear();
+
+                foreach (string path in mainfest.GetAllAssetBundles())
+                {
+                    var fullAbPath = Path.Combine(_assetBundleRootPath, path);
+
+                    string[] dps = mainfest.GetAllDependencies(path);
+
+                    List<string> newDps = new List<string>();
+                    foreach (var dpPath in dps)
+                    {
+   
+                        var fullDepPath = Path.Combine(_assetBundleRootPath, dpPath);
+                        newDps.Add(fullDepPath);
+                    }
+
+                    if (newDps.Count > 0)
+                        _dependenciesPath.Add(fullAbPath, newDps.ToArray());
+                }
+
+
+                mainfestAssetBundle.Unload(true);
+            }
         }
 
         private BundleWrap AddBundleWarp(string abPath, AssetBundle assetBundle)
@@ -40,7 +71,7 @@ namespace CJGame
             BundleWrap bundleWrap = null;
             if (!_cacheBundleDict.TryGetValue(abPath,out bundleWrap))
             {
-                bundleWrap = new();
+                bundleWrap = new BundleWrap();
                 bundleWrap.assetBundle = assetBundle;
                 bundleWrap.loader = this;
                 bundleWrap.abPath = abPath;
@@ -72,81 +103,90 @@ namespace CJGame
         protected override void OnLoad(LoaderHandler handler)
         {
             //先加载其他
-            var path = handler.Path;
-            var dependencies = QueryDependencies(path);
+            //裁剪出ABPath和AssetPath
+            TrySplitePaths(handler.Path, out string abPath, out string _);
+            var dependencies = QueryDependencies(abPath);
 
-            foreach(var depPath in dependencies)
+            if (dependencies != null)
             {
-                //TODO:回调设置
-                var depHandler = Load(depPath);
-                depHandler.OnCompoleted += (result) =>
+                foreach (var depAbPath in dependencies)
                 {
-                    //TODO:必须等子Handler回调完才回调自己
-                };
-
+                    var depHandler = GetOrCreateHandler(depAbPath);
+                    handler.AddChild(depHandler);
+                }
             }
-
 
             StartCoroutine(OnLoadAsset(handler));
         }
 
-        protected override void OnComplete(LoaderHandler handler)
+
+        protected override void OnUnload(LoaderHandler handler)
         {
-            //如果
-            throw new System.NotImplementedException();
+            TrySplitePaths(handler.Path, out string abPath, out string assetPath);
+            var bundleWrap = GetBundleWarp(abPath);
+            if (bundleWrap != null)
+            {
+                bundleWrap.Release();
+            }
+        }
+
+        private string[] TrySplitePaths(string oriPath,out string abPath, out string assetPath)
+        {
+            var paths = oriPath.Split('|');
+            abPath = paths.Length >= 1 ? paths[0] : null;
+            assetPath = paths.Length >= 2 ? paths[1] : null;
+
+            return paths;
         }
 
         //加载元操作
         private IEnumerator OnLoadAsset(LoaderHandler handler)
         {
-            var abPath = handler.Path;
+            TrySplitePaths(handler.Path, out string abPath, out string assetPath);
             AssetBundle assetBundle = null;
+            bool isDone = false;
             var bundleWrap = GetBundleWarp(abPath);
             if (bundleWrap != null)
             {
                 assetBundle = bundleWrap.assetBundle;
-                bundleWrap.Retain();
+                //bundleWrap.Retain();
             }
             else
             {
                 var abRequest = AssetBundle.LoadFromFileAsync(abPath);
                 yield return abRequest;
 
-                bool isDone = abRequest.isDone;
+                isDone = abRequest.isDone;
                 assetBundle = abRequest.assetBundle;
 
                 if (isDone)
                 {
                     //把AB包缓存起来
                     bundleWrap = AddBundleWarp(abPath, assetBundle);
-                    bundleWrap.Retain();
+                    //bundleWrap.Retain();
                 }
             }
 
             object asset = assetBundle;
-            string assetName = "";
-            if (!string.IsNullOrEmpty(assetName))
+            if (!string.IsNullOrEmpty(assetPath))
             {
-                var assetRequest = assetBundle.LoadAssetAsync(assetName);
+                //这里是用完就释放了AB,一般是实例化后就释放ab
+                var assetRequest = assetBundle.LoadAssetAsync(assetPath);
                 yield return assetRequest;
 
                 asset = assetRequest.asset;
+                isDone = assetRequest.isDone;
 
             }
             
             //其他依赖加载完了再返回
-            //TODO:这里标记下状态,表示加载结束
             var result = new LoaderResult();
             result.data = asset;
-            handler.OnCompoleted(result);
+            result.isDone = isDone;
+            result.path = handler.Path;
 
-            yield break;
-        }
-
-        protected override void OnUnload(LoaderHandler handler)
-        {
-            //把所有的依赖全部清Release
-
+            handler.Result = result;  //把结果缓存起来
+            handler.Finish();
         }
     }
 }

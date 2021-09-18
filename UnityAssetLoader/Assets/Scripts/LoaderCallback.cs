@@ -4,5 +4,5 @@ using UnityEngine;
 
 namespace CJGame
 {
-    public delegate void LoadResultCallback1(LoaderResult result);
+    public delegate void LoadCompletedCallback(LoaderHandler handler);
 }

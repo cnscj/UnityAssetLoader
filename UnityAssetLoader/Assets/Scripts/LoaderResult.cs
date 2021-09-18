@@ -6,7 +6,7 @@ namespace CJGame
 {
     public struct LoaderResult
     {
-        public string url;
+        public string path;
 
         public bool isDone;
 
