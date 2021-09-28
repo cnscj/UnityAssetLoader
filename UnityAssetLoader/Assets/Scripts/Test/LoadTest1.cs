@@ -20,5 +20,14 @@ public class LoadTest1 : MonoBehaviour
             Object.Instantiate(cube);
             Debug.LogFormat("{0}", result.data);
         };
+
+
+        assetBundleLoader.Load(Path.Combine(Application.streamingAssetsPath, "prefab|assets/resources/prefab/cube.prefab"))
+        .onSuccess = (result) =>
+        {
+            var cube = result.data as GameObject;
+            Object.Instantiate(cube);
+            Debug.LogFormat("{0}", result.data);
+        };
     }
 }

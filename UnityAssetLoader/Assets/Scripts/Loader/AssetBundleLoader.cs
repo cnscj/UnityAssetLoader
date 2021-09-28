@@ -28,6 +28,7 @@ namespace CJGame
     {
         private Dictionary<string, BundleWrap> _cacheBundleDict = new Dictionary<string, BundleWrap>();
         private Dictionary<string, string[]> _dependenciesPath = new Dictionary<string, string[]>();
+
         private string _assetBundleRootPath;
 
         //依赖文件加载
@@ -41,18 +42,27 @@ namespace CJGame
                 _assetBundleRootPath = Path.GetDirectoryName(mainfestPath);
 
                 AssetBundleManifest mainfest = mainfestAssetBundle.LoadAsset("AssetBundleManifest") as AssetBundleManifest;
-                _dependenciesPath.Clear();
+                LoadManifest(mainfest);
 
+                mainfestAssetBundle.Unload(true);
+            }
+        }
+
+        public void LoadManifest(AssetBundleManifest mainfest)
+        {
+            _dependenciesPath.Clear();
+
+            if (mainfest != null)
+            {
                 foreach (string path in mainfest.GetAllAssetBundles())
                 {
                     var fullAbPath = Path.Combine(_assetBundleRootPath, path);
 
                     string[] dps = mainfest.GetAllDependencies(path);
 
-                    List<string> newDps = new List<string>();
+                    var newDps = new List<string>();
                     foreach (var dpPath in dps)
                     {
-   
                         var fullDepPath = Path.Combine(_assetBundleRootPath, dpPath);
                         newDps.Add(fullDepPath);
                     }
@@ -60,10 +70,14 @@ namespace CJGame
                     if (newDps.Count > 0)
                         _dependenciesPath.Add(fullAbPath, newDps.ToArray());
                 }
-
-
-                mainfestAssetBundle.Unload(true);
             }
+        }
+
+        private string[] QueryDependencies(string abPath)
+        {
+            if (_dependenciesPath.TryGetValue(abPath, out var dependencies))
+                return dependencies;
+            return default;
         }
 
         private BundleWrap AddBundleWarp(string abPath, AssetBundle assetBundle)
@@ -93,18 +107,11 @@ namespace CJGame
             return bundleWrap;
         }
 
-        private string[] QueryDependencies(string abPath)
-        {
-            if (_dependenciesPath.TryGetValue(abPath,out var dependencies))
-                return dependencies;
-            return default;
-        }
-
         protected override void OnLoad(LoaderHandler handler)
         {
             //先加载其他
             //裁剪出ABPath和AssetPath
-            TrySplitePaths(handler.Path, out string abPath, out string _);
+            TrySplitePaths(handler.path, out string abPath, out string _);
             var dependencies = QueryDependencies(abPath);
 
             if (dependencies != null)
@@ -122,12 +129,17 @@ namespace CJGame
 
         protected override void OnUnload(LoaderHandler handler)
         {
-            TrySplitePaths(handler.Path, out string abPath, out string assetPath);
-            var bundleWrap = GetBundleWarp(abPath);
-            if (bundleWrap != null)
-            {
-                bundleWrap.Release();
-            }
+            
+        }
+
+        protected override void OnTaskFinish(LoaderTask task)
+        {
+
+        }
+
+        protected override void OnHandlerFinish(LoaderHandler handler)
+        {
+
         }
 
         private string[] TrySplitePaths(string oriPath,out string abPath, out string assetPath)
@@ -142,14 +154,13 @@ namespace CJGame
         //加载元操作
         private IEnumerator OnLoadAsset(LoaderHandler handler)
         {
-            TrySplitePaths(handler.Path, out string abPath, out string assetPath);
+            TrySplitePaths(handler.path, out string abPath, out string assetPath);
             AssetBundle assetBundle = null;
             bool isDone = false;
             var bundleWrap = GetBundleWarp(abPath);
             if (bundleWrap != null)
             {
                 assetBundle = bundleWrap.assetBundle;
-                //bundleWrap.Retain();
             }
             else
             {
@@ -161,9 +172,8 @@ namespace CJGame
 
                 if (isDone)
                 {
-                    //把AB包缓存起来
+                    //把AB包缓存起来,这里添加弱引用,因为完全有外部移除
                     bundleWrap = AddBundleWarp(abPath, assetBundle);
-                    //bundleWrap.Retain();
                 }
             }
 
@@ -176,14 +186,13 @@ namespace CJGame
 
                 asset = assetRequest.asset;
                 isDone = assetRequest.isDone;
-
             }
             
             //其他依赖加载完了再返回
             var result = new LoaderResult();
             result.data = asset;
             result.isDone = isDone;
-            result.path = handler.Path;
+            result.path = handler.path;
 
             handler.Result = result;  //把结果缓存起来
             handler.Finish();

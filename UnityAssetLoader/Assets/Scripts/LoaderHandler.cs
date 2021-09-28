@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,8 +5,8 @@ namespace CJGame
 {
     public class LoaderHandler
     {
-        public BaseLoader Loader { get; set; }
-        public string Path { get; set; }
+        public readonly BaseLoader loader;
+        public readonly string path;
         public float Timeout { get; set; } = 30;
         public LoaderResult Result { get; set; }
 
@@ -16,64 +14,51 @@ namespace CJGame
         private HashSet<LoaderHandler> _childrenHandlers;
         private int _callCount;
         private float _tickTime;
-        private bool _isFinished;
+        private float _doneTime;
+
+        public LoaderHandler(BaseLoader loader,string path)
+        {
+            this.loader = loader;
+            this.path = path;
+        }
 
         public bool IsTimeout()
         {
-            if (Timeout > 0)
+            if (Timeout > 0f)
             {
-                if (!_isFinished)
+                var checkTime = IsDone() ? _doneTime : Time.realtimeSinceStartup;
+                if (checkTime >= _tickTime + Timeout)
                 {
-                    var curTime = Time.realtimeSinceStartup;
-                    if (curTime >= _tickTime + Timeout)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             return false;
         }
 
-        public bool IsCompoleted()
+        public bool IsDone()
         {
-            return _isFinished;
-        }
-
-        public void Tick()
-        {
-            _tickTime = Time.realtimeSinceStartup;
-        }
-
-        public void Unload()
-        {
-            if (_childrenHandlers != null)
-            {
-                foreach (var handler in _childrenHandlers)
-                {
-                    handler.Unload();
-                }
-            }
-
-            Loader.Unload(Path);
-        }
-
-        public void Release()
-        {
-            //TODO:应该以Task为单位
+            return _doneTime > 0f;
         }
 
         public void Finish()
         {
-            _isFinished = true;
+            if (IsDone())
+                return;
+            
+            _doneTime = Time.realtimeSinceStartup;
             _callCount++;
+
             OnTryCall();
         }
 
         public void AddChild(LoaderHandler handler)
         {
             var children = GetChildrenHandlers();
-            handler.AddCompoleted(OnClildCall);
-            children.Add(handler);
+            if (!children.Contains(handler))
+            {
+                handler.AddCompoleted(OnClildCall);
+                children.Add(handler);
+            }
         }
 
         public void RemoveChild(LoaderHandler handler)
@@ -85,6 +70,12 @@ namespace CJGame
             }
 
         }
+
+        public HashSet<LoaderHandler> GetChildren()
+        {
+            return _childrenHandlers;
+        }
+
         public void RemoveAllChildren()
         {
             if (_childrenHandlers != null)
@@ -106,6 +97,11 @@ namespace CJGame
             _onCompleted -= callback;
         }
 
+        public void RefreshTick()
+        {
+            _tickTime = Time.realtimeSinceStartup;
+        }
+
         private void OnTryCall()
         {
             var needCallCount = (_childrenHandlers != null ? _childrenHandlers.Count : 0) + 1;//这里要算上自己
@@ -122,7 +118,6 @@ namespace CJGame
             OnTryCall();
         }
 
-        //
         private HashSet<LoaderHandler> GetChildrenHandlers()
         {
             _childrenHandlers = _childrenHandlers ?? new HashSet<LoaderHandler>();

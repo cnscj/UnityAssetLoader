@@ -24,9 +24,14 @@ namespace CJGame
             return task;
         }
 
-        public void Unload(string path)
+        public void Unload(LoaderTask task)
         {
             OnUnload(task.handler);
+        }
+
+        public void CallTaskFinish(LoaderTask task)
+        {
+            OnTaskFinish(task);
         }
 
         private void Update()
@@ -43,7 +48,7 @@ namespace CJGame
                 var task = _prepareTasks.Dequeue();
                 var handler = task.handler;
 
-                handler.AddCompoleted(task.Callback);
+                handler.AddCompoleted(task.OnCallback);
             }
 
             //负责检查是否有
@@ -51,21 +56,22 @@ namespace CJGame
             {
                 var handler = _prepareHandlers.Dequeue();
 
-                handler.Tick();
+                handler.RefreshTick();
                 OnLoad(handler);    //进行加载
             }
         }
 
         private void DealLoading()
         {
-            //进行状态轮询和超时移除
+            //进行状态轮询和超时检测
             foreach(var handler in _loadingHandlers)
             {
                 if (handler.IsTimeout())
                 {
-                    _loadingHandlers.Remove(handler);
+                    handler.Finish();   //强制结束
                 }
-                else if (handler.IsCompoleted())
+
+                if (handler.IsDone())
                 {
                     _finishedHandlers.Enqueue(handler);
                     _loadingHandlers.Remove(handler);
@@ -79,8 +85,9 @@ namespace CJGame
             while (_finishedHandlers.Count > 0)
             {
                 var handler = _finishedHandlers.Dequeue();
+                OnHandlerFinish(handler);
 
-                _allHandlers.Remove(handler.Path);
+                _allHandlers.Remove(handler.path);
             }
         }
 
@@ -88,9 +95,8 @@ namespace CJGame
         {
             if (!_allHandlers.TryGetValue(path, out var handler))
             {
-                handler = new LoaderHandler();
-                handler.Path = path;
-                handler.Loader = this;
+                handler = new LoaderHandler(this,path);
+                _allHandlers.Add(path,handler);
 
                 _prepareHandlers.Enqueue(handler);
             }
@@ -99,6 +105,9 @@ namespace CJGame
 
         protected abstract void OnLoad(LoaderHandler handler);
         protected virtual void OnUnload(LoaderHandler handler) { }
+
+        protected virtual void OnTaskFinish(LoaderTask task) { }
+        protected virtual void OnHandlerFinish(LoaderHandler handler) { }
     }
 }
 
