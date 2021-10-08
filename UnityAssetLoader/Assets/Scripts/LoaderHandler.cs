@@ -7,8 +7,8 @@ namespace CJGame
     {
         public readonly BaseLoader loader;
         public readonly string path;
-        public float Timeout { get; set; } = 30;
-        public LoaderResult Result { get; set; }
+        public float timeout;
+        public LoaderResult result;
 
         private LoadCompletedCallback _onCompleted;
         private HashSet<LoaderHandler> _childrenHandlers;
@@ -20,14 +20,15 @@ namespace CJGame
         {
             this.loader = loader;
             this.path = path;
+            this.timeout = 30f;
         }
 
         public bool IsTimeout()
         {
-            if (Timeout > 0f)
+            if (timeout > 0f)
             {
-                var checkTime = IsDone() ? _doneTime : Time.realtimeSinceStartup;
-                if (checkTime >= _tickTime + Timeout)
+                var checkTime = IsCompleted() ? _doneTime : Time.realtimeSinceStartup;
+                if (checkTime >= _tickTime + timeout)
                 {
                     return true;
                 }
@@ -35,14 +36,14 @@ namespace CJGame
             return false;
         }
 
-        public bool IsDone()
+        public bool IsCompleted()
         {
             return _doneTime > 0f;
         }
 
         public void Finish()
         {
-            if (IsDone())
+            if (IsCompleted())
                 return;
             
             _doneTime = Time.realtimeSinceStartup;
@@ -114,6 +115,7 @@ namespace CJGame
         private void OnClildCall(LoaderHandler handler)
         {
             //这里记录下失败名单和handler,并返回到结果集中
+
             _callCount++;
             OnTryCall();
         }

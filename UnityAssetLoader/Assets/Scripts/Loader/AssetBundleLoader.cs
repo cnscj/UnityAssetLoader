@@ -17,7 +17,7 @@ namespace CJGame
             public AssetBundle assetBundle;
             protected override void OnDispose()
             {
-                assetBundle.Unload(false);
+                assetBundle.Unload(true);
                 loader.RemoveBundleWarp(abPath);
             }
         }
@@ -26,8 +26,8 @@ namespace CJGame
 
     public partial class AssetBundleLoader : BaseLoader
     {
-        private Dictionary<string, BundleWrap> _cacheBundleDict = new Dictionary<string, BundleWrap>();
-        private Dictionary<string, string[]> _dependenciesPath = new Dictionary<string, string[]>();
+        private readonly Dictionary<string, BundleWrap> _cacheBundleDict = new Dictionary<string, BundleWrap>();
+        private readonly Dictionary<string, string[]> _dependenciesPath = new Dictionary<string, string[]>();
 
         private string _assetBundleRootPath;
 
@@ -109,8 +109,9 @@ namespace CJGame
 
         protected override void OnLoad(LoaderHandler handler)
         {
-            //先加载其他
-            //裁剪出ABPath和AssetPath
+            if (handler == null)
+                return;
+
             TrySplitePaths(handler.path, out string abPath, out string _);
             var dependencies = QueryDependencies(abPath);
 
@@ -118,6 +119,9 @@ namespace CJGame
             {
                 foreach (var depAbPath in dependencies)
                 {
+                    if (string.Compare(depAbPath, abPath) == 0)
+                        continue;
+                        
                     var depHandler = GetOrCreateHandler(depAbPath);
                     handler.AddChild(depHandler);
                 }
@@ -129,17 +133,52 @@ namespace CJGame
 
         protected override void OnUnload(LoaderHandler handler)
         {
-            
+            //释放所有的依赖,递归释放依赖
+            if (handler == null)
+                return;
+
+            TrySplitePaths(handler.path, out string abPath, out string _);
+            var bundleWrap = GetBundleWarp(abPath);
+            bundleWrap?.Release();
+
+            var depHandlers = handler.GetChildren();
+            if (depHandlers != null)
+            {
+                foreach (var depHandler in depHandlers)
+                {
+                    OnUnload(depHandler);
+                }
+            }
         }
 
         protected override void OnTaskFinish(LoaderTask task)
         {
-
+            //增加所有handler的引用
+            var handler = task.handler;
+            if (handler.result.isDone)
+            {
+                //因为这种直接使用的资源是用完就释放的,所以不需要Retain
+                RetainHandlerWithBundle(handler);
+            }
         }
 
-        protected override void OnHandlerFinish(LoaderHandler handler)
+        private void RetainHandlerWithBundle(LoaderHandler handler)
         {
+            if (handler == null)
+                return;
 
+            TrySplitePaths(handler.path, out string abPath, out string _);
+            var bundleWrap = GetBundleWarp(abPath);
+            bundleWrap?.Retain();
+
+            var depHandlers = handler.GetChildren();
+            if (depHandlers != null)
+            {
+                foreach (var depHandler in depHandlers)
+                {
+                    RetainHandlerWithBundle(depHandler);
+                }
+            }
         }
 
         private string[] TrySplitePaths(string oriPath,out string abPath, out string assetPath)
@@ -172,7 +211,7 @@ namespace CJGame
 
                 if (isDone)
                 {
-                    //把AB包缓存起来,这里添加弱引用,因为完全有外部移除
+                    //把AB包缓存起来
                     bundleWrap = AddBundleWarp(abPath, assetBundle);
                 }
             }
@@ -194,7 +233,7 @@ namespace CJGame
             result.isDone = isDone;
             result.path = handler.path;
 
-            handler.Result = result;  //把结果缓存起来
+            handler.result = result;  //把结果缓存起来
             handler.Finish();
         }
     }

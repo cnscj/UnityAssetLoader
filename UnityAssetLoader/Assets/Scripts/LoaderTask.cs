@@ -13,6 +13,7 @@ namespace CJGame
         public LoaderTask(LoaderHandler handler)
         {
             this.handler = handler;
+            _isRelease = true;
         }
 
         public void Stop()
@@ -32,17 +33,21 @@ namespace CJGame
 
         public void Clear()
         {
-            Unload();
             Stop();
+            Unload();
+
             onSuccess = null;
             onFailed = null;
         }
 
         public void OnCallback(LoaderHandler handler)
         {
-            var result = handler.Result;
+            handler.loader.CallTaskFinish(this);
+
+            var result = handler.result;
             if (result.isDone)
             {
+                _isRelease = false;
                 onSuccess?.Invoke(result);
             }
             else
@@ -50,7 +55,6 @@ namespace CJGame
                 onFailed?.Invoke(-1);
             }
 
-            handler.loader.CallTaskFinish(this);
         }
 
     }

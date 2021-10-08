@@ -6,12 +6,14 @@ using UnityEngine;
 
 public class LoadTest1 : MonoBehaviour
 {
-    public AssetBundleLoader assetBundleLoader;
- 
+    private LoaderTask assetTask;
+
     void Start()
     {
-        assetBundleLoader = gameObject.GetComponent <AssetBundleLoader>() ?? gameObject.AddComponent<AssetBundleLoader>();
+        var assetBundleLoader = LoaderManager.GetInstance().GetOrCreateLoader<AssetBundleLoader>();
         assetBundleLoader.LoadManifest(Path.Combine(Application.streamingAssetsPath, "StreamingAssets"));
+
+        Debug.Log(Application.streamingAssetsPath);
 
         var task = assetBundleLoader.Load(Path.Combine(Application.streamingAssetsPath, "prefab|assets/resources/prefab/cube.prefab"));
         task.onSuccess = (result) =>
@@ -19,15 +21,16 @@ public class LoadTest1 : MonoBehaviour
             var cube = result.data as GameObject;
             Object.Instantiate(cube);
             Debug.LogFormat("{0}", result.data);
+            //task.Unload();
         };
 
 
-        assetBundleLoader.Load(Path.Combine(Application.streamingAssetsPath, "prefab|assets/resources/prefab/cube.prefab"))
-        .onSuccess = (result) =>
-        {
-            var cube = result.data as GameObject;
-            Object.Instantiate(cube);
-            Debug.LogFormat("{0}", result.data);
-        };
+        //assetBundleLoader.Load(Path.Combine(Application.streamingAssetsPath, "prefab|assets/resources/prefab/cube.prefab"))
+        //.onSuccess = (result) =>
+        //{
+        //    var cube = result.data as GameObject;
+        //    Object.Instantiate(cube);
+        //    Debug.LogFormat("{0}", result.data);
+        //};
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using XLibrary.Package;
 
 namespace CJGame
 {
@@ -71,7 +72,7 @@ namespace CJGame
                     handler.Finish();   //强制结束
                 }
 
-                if (handler.IsDone())
+                if (handler.IsCompleted())
                 {
                     _finishedHandlers.Enqueue(handler);
                     _loadingHandlers.Remove(handler);
