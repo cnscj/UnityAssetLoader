@@ -8,6 +8,7 @@ namespace CJGame
         public Action<LoaderResult> onSuccess;
         public Action<int> onFailed;
 
+        private LoadTaskCompleted _onCompleted;
         private bool _isRelease;
 
         public LoaderTask(LoaderHandler handler)
@@ -38,11 +39,22 @@ namespace CJGame
 
             onSuccess = null;
             onFailed = null;
+            _onCompleted = null;
+        }
+
+        public void AddCallback(LoadTaskCompleted callback)
+        {
+            _onCompleted += callback;
+        }
+
+        public void RemoveCallback(LoadTaskCompleted callback)
+        {
+            _onCompleted -= callback;
         }
 
         public void OnCallback(LoaderHandler handler)
         {
-            handler.loader.CallTaskFinish(this);
+            _onCompleted?.Invoke(this);
 
             var result = handler.result;
             if (result.isDone)

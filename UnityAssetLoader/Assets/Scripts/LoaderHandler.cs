@@ -10,7 +10,7 @@ namespace CJGame
         public float timeout;
         public LoaderResult result;
 
-        private LoadCompletedCallback _onCompleted;
+        private LoadHandlerCompleted _onCompleted;
         private HashSet<LoaderHandler> _childrenHandlers;
         private int _callCount;
         private float _tickTime;
@@ -88,12 +88,12 @@ namespace CJGame
             }
         }
 
-        public void AddCompoleted(LoadCompletedCallback callback)
+        public void AddCompoleted(LoadHandlerCompleted callback)
         {
             _onCompleted += callback;
         }
 
-        public void RemoveCompoleted(LoadCompletedCallback callback)
+        public void RemoveCompoleted(LoadHandlerCompleted callback)
         {
             _onCompleted -= callback;
         }

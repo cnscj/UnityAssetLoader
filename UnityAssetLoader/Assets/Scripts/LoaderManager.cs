@@ -7,8 +7,6 @@ namespace CJGame
 {
     public class LoaderManager : MonoSingleton<LoaderManager>
     {
-
-        private readonly Queue<LoaderTask> _prepareTasks = new Queue<LoaderTask>();
         private Dictionary<string, BaseLoader> _loaderMap = new Dictionary<string, BaseLoader>();
 
         public T GetOrCreateLoader<T>() where T : BaseLoader
@@ -28,12 +26,6 @@ namespace CJGame
             }
 
             return loader as T;
-        }
-
-
-        private void Update()
-        {
-            
         }
 
     }

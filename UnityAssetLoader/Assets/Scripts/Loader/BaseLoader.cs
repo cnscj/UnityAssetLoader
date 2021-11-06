@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,9 @@ namespace CJGame
 {
     public abstract class BaseLoader : MonoBehaviour
     {
+        public int maxLoadingHandlers = 10; //最大同帧加载个数
+
+
         private readonly Dictionary<string, LoaderHandler> _allHandlers = new Dictionary<string, LoaderHandler>();
 
         private readonly Queue<LoaderTask> _prepareTasks = new Queue<LoaderTask>();
@@ -30,11 +34,6 @@ namespace CJGame
             OnUnload(task.handler);
         }
 
-        public void CallTaskFinish(LoaderTask task)
-        {
-            OnTaskFinish(task);
-        }
-
         private void Update()
         {
             DealPrepare();
@@ -48,12 +47,17 @@ namespace CJGame
             {
                 var task = _prepareTasks.Dequeue();
                 var handler = task.handler;
+                task.AddCallback(OnTaskFinish);
 
                 handler.AddCompoleted(task.OnCallback);
             }
 
-            //负责检查是否有
-            while (_prepareHandlers.Count > 0)
+            //判断最大的加载数量
+            var curLoadingHandlersNum = _loadingHandlers.Count;
+            var canLoadHandlersNum = maxLoadingHandlers - curLoadingHandlersNum;
+            if (maxLoadingHandlers < 0) canLoadHandlersNum = _prepareHandlers.Count;
+
+            for (int i = 0; i < canLoadHandlersNum; i++)
             {
                 var handler = _prepareHandlers.Dequeue();
 
