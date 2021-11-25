@@ -57,7 +57,7 @@ namespace CJGame
             var canLoadHandlersNum = maxLoadingHandlers - curLoadingHandlersNum;
             if (maxLoadingHandlers < 0) canLoadHandlersNum = _prepareHandlers.Count;
 
-            for (int i = 0; i < canLoadHandlersNum; i++)
+            for (int i = 0; i < canLoadHandlersNum && _prepareHandlers.Count > 0; i++)
             {
                 var handler = _prepareHandlers.Dequeue();
 
