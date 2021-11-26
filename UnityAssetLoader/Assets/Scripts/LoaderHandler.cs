@@ -46,7 +46,6 @@ namespace CJGame
             if (IsCompleted())
                 return;
             
-            _doneTime = Time.realtimeSinceStartup;
             _callCount++;
 
             OnTryCall();
@@ -109,6 +108,7 @@ namespace CJGame
             if (_callCount >= needCallCount)
             {
                 _onCompleted(this);
+                _doneTime = Time.realtimeSinceStartup;  //NOTE:如果加载依赖过多,可能会造成等待
             }
         }
 
