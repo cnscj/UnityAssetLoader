@@ -32,33 +32,33 @@ namespace CJGame
         private string _assetBundleRootPath;
 
         //依赖文件加载
-        public void LoadManifest(string mainfestPath)
+        public void LoadManifest(string manifestPath)
         {
             //采用同步加载的方式,不然后面的都取不到依赖
-            var mainfestAssetBundle = AssetBundle.LoadFromFile(mainfestPath);
-            if (mainfestAssetBundle != null)
+            var manifestAssetBundle = AssetBundle.LoadFromFile(manifestPath);
+            if (manifestAssetBundle != null)
             {
-                //取mainfest所在目录为根目录
-                _assetBundleRootPath = Path.GetDirectoryName(mainfestPath);
+                //取manifest所在目录为根目录
+                _assetBundleRootPath = Path.GetDirectoryName(manifestPath);
 
-                AssetBundleManifest mainfest = mainfestAssetBundle.LoadAsset("AssetBundleManifest") as AssetBundleManifest;
-                LoadManifest(mainfest);
+                AssetBundleManifest manifest = manifestAssetBundle.LoadAsset("AssetBundleManifest") as AssetBundleManifest;
+                LoadManifest(manifest);
 
-                mainfestAssetBundle.Unload(true);
+                manifestAssetBundle.Unload(true);
             }
         }
 
-        public void LoadManifest(AssetBundleManifest mainfest)
+        public void LoadManifest(AssetBundleManifest manifest)
         {
             _dependenciesPath.Clear();
 
-            if (mainfest != null)
+            if (manifest != null)
             {
-                foreach (string path in mainfest.GetAllAssetBundles())
+                foreach (string path in manifest.GetAllAssetBundles())
                 {
                     var fullAbPath = Path.Combine(_assetBundleRootPath, path);
 
-                    string[] dps = mainfest.GetAllDependencies(path);
+                    string[] dps = manifest.GetAllDependencies(path);
 
                     var newDps = new List<string>();
                     foreach (var dpPath in dps)
